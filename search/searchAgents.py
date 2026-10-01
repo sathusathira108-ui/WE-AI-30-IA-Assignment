@@ -481,8 +481,51 @@ def foodHeuristic(state: Tuple[Tuple, List[List]], problem: FoodSearchProblem):
     problem.heuristicInfo['wallCount']
     """
     position, foodGrid = state
-    "*** YOUR CODE HERE ***"
-    return 0
+    foodList = foodGrid.asList()
+
+    if not foodList:
+        return 0
+
+    # Precompute / cache all-pairs maze distances or BFS distance maps
+    if 'distMap' not in problem.heuristicInfo:
+        problem.heuristicInfo['distMap'] = {}
+
+    distMap = problem.heuristicInfo['distMap']
+
+    def getDist(p1, p2):
+        if p1 == p2:
+            return 0
+        if (p1, p2) in distMap:
+            return distMap[(p1, p2)]
+        if (p2, p1) in distMap:
+            return distMap[(p2, p1)]
+        # Compute shortest path distance using BFS on the maze
+        d = mazeDistance(p1, p2, problem.startingGameState)
+        distMap[(p1, p2)] = d
+        distMap[(p2, p1)] = d
+        return d
+
+    # Max maze distance from position to any food dot
+    # Combined with max distance between any pair of food dots
+    max_h = 0
+    for food in foodList:
+        d_p_food = getDist(position, food)
+        if d_p_food > max_h:
+            max_h = d_p_food
+
+    # Pairwise food distance bound: min(d(p, f1), d(p, f2)) + d(f1, f2)
+    for i in range(len(foodList)):
+        f1 = foodList[i]
+        d1 = getDist(position, f1)
+        for j in range(i + 1, len(foodList)):
+            f2 = foodList[j]
+            d2 = getDist(position, f2)
+            d12 = getDist(f1, f2)
+            val = min(d1, d2) + d12
+            if val > max_h:
+                max_h = val
+
+    return max_h
 
 class ClosestDotSearchAgent(SearchAgent):
     "Search for all food using a sequence of searches"
